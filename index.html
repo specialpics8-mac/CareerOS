@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#111827">
+  <meta name="description" content="CareerOS — personal AI job search tracker">
+  <link rel="manifest" href="manifest.json">
+  <title>CareerOS</title>
+  <style>
+    :root {
+      --bg:#f6f7f9; --panel:#fff; --text:#111827; --muted:#6b7280;
+      --border:#e5e7eb; --accent:#2563eb; --accent-soft:#eff6ff;
+      --green:#15803d; --green-soft:#f0fdf4; --amber:#b45309; --amber-soft:#fffbeb;
+      --red:#b91c1c; --red-soft:#fef2f2; --shadow:0 1px 2px rgba(0,0,0,.05);
+    }
+    *{box-sizing:border-box} body{margin:0;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--text)}
+    button,input,select,textarea{font:inherit} button{cursor:pointer}
+    .app{max-width:1180px;margin:auto;padding:18px}
+    header{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:18px}
+    .brand{display:flex;align-items:center;gap:11px}.logo{width:40px;height:40px;border-radius:12px;background:#111827;color:white;display:grid;place-items:center;font-weight:800}
+    h1{font-size:21px;margin:0}.subtitle{font-size:12px;color:var(--muted)}
+    nav{display:flex;gap:6px;overflow:auto;padding-bottom:4px;margin-bottom:18px}
+    nav button{border:0;background:transparent;padding:10px 13px;border-radius:9px;color:var(--muted);white-space:nowrap}
+    nav button.active{background:var(--text);color:white}
+    .grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:16px;box-shadow:var(--shadow)}
+    .metric .label{font-size:12px;color:var(--muted)}.metric .value{font-size:27px;font-weight:750;margin-top:5px}
+    .section{margin-top:16px}.section-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}.section-head h2{font-size:15px;margin:0}
+    .list{display:grid;gap:10px}.job{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center}
+    .job-title{font-weight:700}.company{font-size:13px;color:var(--muted);margin-top:3px}.meta{font-size:12px;color:var(--muted);margin-top:7px}
+    .actions{display:flex;gap:7px;flex-wrap:wrap}.btn{border:1px solid var(--border);background:white;padding:8px 11px;border-radius:8px;font-size:12px}.btn.primary{background:var(--accent);color:white;border-color:var(--accent)}.btn.dark{background:#111827;color:white;border-color:#111827}
+    .score{font-weight:800;padding:5px 8px;border-radius:8px;font-size:12px;display:inline-block}.score.high{background:var(--green-soft);color:var(--green)}.score.mid{background:var(--amber-soft);color:var(--amber)}.score.low{background:var(--red-soft);color:var(--red)}
+    .badge{display:inline-block;padding:4px 7px;border-radius:7px;background:#f3f4f6;color:#374151;font-size:11px;margin-right:4px}
+    .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}.input{width:100%;border:1px solid var(--border);border-radius:9px;padding:9px 10px;background:white}.toolbar .input{max-width:320px}
+    .form{display:grid;gap:10px}.form label{font-size:12px;font-weight:650}.form textarea{min-height:150px;resize:vertical}.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .empty{padding:28px;text-align:center;color:var(--muted);border:1px dashed var(--border);border-radius:12px;background:white}
+    .notice{padding:11px 12px;border-radius:9px;background:var(--accent-soft);color:#1e40af;font-size:12px;margin-bottom:12px}
+    .danger{color:var(--red)}.muted{color:var(--muted)}
+    dialog{border:0;border-radius:15px;width:min(680px,calc(100% - 24px));padding:0;box-shadow:0 20px 60px rgba(0,0,0,.22)}dialog::backdrop{background:rgba(17,24,39,.45)}
+    .modal{padding:18px}.modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px}.modal-head h2{font-size:17px;margin:0}.close{border:0;background:#f3f4f6;border-radius:8px;width:34px;height:34px}
+    .hidden{display:none!important}
+    @media(max-width:800px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.job{grid-template-columns:1fr}.form-row{grid-template-columns:1fr}}
+    @media(max-width:480px){.app{padding:12px}.grid{grid-template-columns:1fr 1fr}.metric .value{font-size:22px}header{align-items:flex-start}}
+  </style>
+</head>
+<body>
+<main class="app" id="app">
+  <header>
+    <div class="brand"><div class="logo">C</div><div><h1>CareerOS</h1><div class="subtitle">Your personal job-search command centre</div></div></div>
+    <button class="btn" id="settingsBtn">⚙ Settings</button>
+  </header>
+  <nav id="nav"></nav>
+  <div id="view"></div>
+</main>
+
+<dialog id="modal"><div class="modal" id="modalContent"></div></dialog>
+
+<script>
+const DEFAULT_COMPANIES = [
+  ["HSBC","Global Bank"],["DBS","Global Bank"],["American Express","Global Bank"],["Bank of America","Global Bank"],["Citi","Global Bank"],["Standard Chartered","Global Bank"],["Deutsche Bank","Global Bank"],["Barclays","Global Bank"],["Goldman Sachs","Global Bank"],["JPMorgan","Global Bank"],
+  ["Razorpay","Indian Fintech"],["PayU","Indian Fintech"],["Cashfree Payments","Indian Fintech"],["Pine Labs","Indian Fintech"],["Juspay","Indian Fintech"],["Poonawalla Fincorp","Indian Fintech"],["Jio Finance","Indian Fintech"],["Kiwi Credit Card","Indian Fintech"],["Kiwi Insurance","Indian Fintech"],["Fibe","Indian Fintech"],["Scapia","Indian Fintech"],["CRED","Indian Fintech"],["Groww","Indian Fintech"],["PhonePe","Indian Fintech"],["Jupiter","Indian Fintech"],["Navi","Indian Fintech"],["Slice","Indian Fintech"],["Fi Money","Indian Fintech"],["OneCard","Indian Fintech"],
+  ["Stripe","Global Fintech"],["Airwallex","Global Fintech"],["Mastercard","Payments"],["NPCI","Payments"],["Visa","Payments"],["BlackRock","Finance/Data"],["Motilal Oswal","Finance/Data"],["CRISIL","Finance/Data"],["ABFC","Finance/Data"],["Google","Big Tech"],["Adobe","Big Tech"],["Amazon","Big Tech"],["Flipkart","Big Tech"],["Meesho","Big Tech"]
+];
+
+const state = {
+  tab:"dashboard", jobs:[], applications:[], companies:[], contacts:[], resumes:[], interviews:[], followups:[], settings:{}, backend:""
+};
+
+const navItems = [
+  ["dashboard","⌂ Dashboard"],["jobs","🔎 Jobs"],["applications","▣ Applications"],["companies","🏢 Companies"],["networking","🤝 Networking"],["resume","📄 Resume"]
+];
+
+function esc(v=""){return String(v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]))}
+function id(){return "c_"+Date.now()+"_"+Math.random().toString(36).slice(2,7)}
+function scoreClass(n){return n>=85?"high":n>=70?"mid":"low"}
+function fmtDate(v){if(!v)return "—";const d=new Date(v);return isNaN(d)?"—":d.toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"})}
+function saveLocal(){localStorage.setItem("careeros_state",JSON.stringify(state))}
+function loadLocal(){
+  try{const x=JSON.parse(localStorage.getItem("careeros_state")||"null");if(x){Object.assign(state,x)}}catch(e){}
+  if(!state.companies.length) state.companies=DEFAULT_COMPANIES.map(([name,category])=>({id:id(),name,category,active:true,sourceUrl:"",ats:"",lastChecked:""}));
+  if(!state.settings) state.settings={};
+}
+async function api(action,payload={}){
+  if(!state.backend)return null;
+  const params=new URLSearchParams({action,...payload});
+  try{const r=await fetch(state.backend+"?"+params.toString());return await r.json()}catch(e){return {error:e.message}}
+}
+async function sync(action,payload={}){
+  const r=await api(action,payload);
+  if(r && r.error) alert(r.error);
+  return r;
+}
+
+function renderNav(){
+  document.getElementById("nav").innerHTML=navItems.map(([k,t])=>`<button class="${state.tab===k?"active":""}" data-tab="${k}">${t}</button>`).join("");
+  document.querySelectorAll("[data-tab]").forEach(b=>b.addEventListener("click",()=>{state.tab=b.dataset.tab;render()}));
+}
+function render(){renderNav();const v=document.getElementById("view");v.innerHTML=views[state.tab]();bind();}
+
+const views = {
+ dashboard(){
+  const active=state.applications.filter(a=>!["Rejected","Withdrawn","Offer"].includes(a.status)).length;
+  const interviews=state.applications.filter(a=>a.status==="Interview"||a.status==="Final").length;
+  const high=state.jobs.filter(j=>(+j.match||0)>=85).sort((a,b)=>(+b.match||0)-(+a.match||0)).slice(0,5);
+  const due=state.followups.filter(f=>f.status!=="Done");
+  return `<div class="grid">
+    <div class="card metric"><div class="label">New matches</div><div class="value">${state.jobs.length}</div></div>
+    <div class="card metric"><div class="label">Active applications</div><div class="value">${active}</div></div>
+    <div class="card metric"><div class="label">Interviews</div><div class="value">${interviews}</div></div>
+    <div class="card metric"><div class="label">Follow-ups</div><div class="value">${due.length}</div></div>
+  </div>
+  <section class="section"><div class="section-head"><h2>🔥 Top opportunities</h2><button class="btn" data-action="addJob">+ Add job</button></div>
+  <div class="list">${high.length?high.map(jobCard).join(""):`<div class="empty">Add your first job to start building CareerOS.</div>`}</div></section>
+  <section class="section"><div class="section-head"><h2>Today</h2></div>
+  <div class="card"><div class="meta">The first version is local-first. Connect your Apps Script backend in Settings to sync jobs, applications, and profile data to Google Sheets.</div></div></section>`;
+ },
+ jobs(){
+  return `<div class="toolbar"><input class="input" id="jobSearch" placeholder="Search jobs, companies or roles…"><button class="btn primary" data-action="addJob">+ Add job</button></div>
+  <div class="list">${state.jobs.length?state.jobs.filter(j=>(j.title+" "+j.company+" "+j.location).toLowerCase().includes((document.getElementById("jobSearch")?.value||"").toLowerCase())).map(jobCard).join(""):`<div class="empty">No jobs yet. Add a role manually or use the saved portal searches while we build automated discovery.</div>`}</div>`;
+ },
+ applications(){
+  const stages=["Saved","Preparing","Applied","Recruiter Screen","Interview","Final","Offer","Rejected","Withdrawn"];
+  return `<div class="toolbar"><button class="btn primary" data-action="addApplication">+ Add application</button></div>
+  <div class="grid">${stages.map(s=>`<div class="card"><strong>${s}</strong><div class="meta">${state.applications.filter(a=>a.status===s).length} applications</div>${state.applications.filter(a=>a.status===s).map(a=>`<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border)"><b>${esc(a.title)}</b><div class="meta">${esc(a.company)}</div><div class="actions" style="margin-top:7px"><button class="btn" data-action="editApplication" data-id="${a.id}">Open</button></div></div>`).join("")}</div>`).join("")}</div>`;
+ },
+ companies(){
+  return `<div class="toolbar"><input class="input" id="companySearch" placeholder="Search companies…"></div>
+  <div class="list">${state.companies.map(c=>`<div class="card job"><div><div class="job-title">${esc(c.name)}</div><div class="company">${esc(c.category||"")} ${c.active?"":"· Inactive"}</div><div class="meta">${c.ats?`ATS: ${esc(c.ats)} · `:""}${c.lastChecked?"Checked "+fmtDate(c.lastChecked):"Not checked yet"}</div></div><div class="actions">${c.sourceUrl?`<a class="btn" href="${esc(c.sourceUrl)}" target="_blank" rel="noopener">Careers ↗</a>`:""}<button class="btn" data-action="editCompany" data-id="${c.id}">Edit</button></div></div>`).join("")}</div>`;
+ },
+ networking(){
+  return `<div class="notice">Networking drafts are generated from the job + contact context. In V1, nothing is sent automatically.</div>
+  <div class="toolbar"><button class="btn primary" data-action="addContact">+ Add contact</button></div>
+  <div class="list">${state.contacts.length?state.contacts.map(c=>`<div class="card job"><div><div class="job-title">${esc(c.name)}</div><div class="company">${esc(c.title)} · ${esc(c.company)}</div><div class="meta">${esc(c.linkedin||"No LinkedIn URL")} · ${esc(c.relationship||"")}</div></div><div class="actions"><button class="btn primary" data-action="draftContact" data-id="${c.id}">Draft message</button></div></div>`).join(""):`<div class="empty">Add a recruiter, hiring manager, employee or other contact.</div>`}</div>`;
+ },
+ resume(){
+  const r=state.resumes[0];
+  return `<div class="notice">Keep one master resume as the source of truth. Tailored versions should only rephrase, reorder or emphasize facts already supported by it.</div>
+  <div class="card"><div class="section-head"><h2>Master resume</h2><button class="btn primary" data-action="editResume">Edit profile</button></div>
+  ${r?`<div class="meta">Last updated ${fmtDate(r.updatedAt)}</div><pre style="white-space:pre-wrap;font:13px/1.5 inherit;margin-top:12px">${esc(r.text)}</pre>`:`<div class="empty">Add your master resume text to enable structured matching and tailoring.</div>`}</div>`;
+ },
+};
+
+function jobCard(j){
+ return `<div class="card job"><div><div class="job-title">${esc(j.title||"Untitled role")} ${j.match?`<span class="score ${scoreClass(+j.match)}">${esc(j.match)}% match</span>`:""}</div><div class="company">${esc(j.company||"")} · ${esc(j.location||"")}</div><div class="meta">${j.source?esc(j.source):"Manual"} ${j.dateFound?"· Found "+fmtDate(j.dateFound):""}</div></div><div class="actions">${j.url?`<a class="btn" href="${esc(j.url)}" target="_blank" rel="noopener">JD ↗</a>`:""}<button class="btn" data-action="tailorJob" data-id="${j.id}">Tailor</button><button class="btn primary" data-action="applyJob" data-id="${j.id}">Apply</button></div></div>`;
+}
+
+function openModal(title,body){
+ document.getElementById("modalContent").innerHTML=`<div class="modal-head"><h2>${title}</h2><button class="close" id="closeModal">×</button></div>${body}`;
+ const d=document.getElementById("modal");d.showModal();document.getElementById("closeModal").onclick=()=>d.close();
+}
+function bind(){
+ document.querySelectorAll("[data-action]").forEach(b=>b.addEventListener("click",()=>actions[b.dataset.action]?.(b.dataset.id)));
+ const js=document.getElementById("jobSearch");if(js)js.addEventListener("input",()=>render());
+}
+const actions={
+ addJob(){
+  openModal("Add job",`<form class="form" id="jobForm">
+  <div class="form-row"><label>Company<input class="input" name="company" required></label><label>Role<input class="input" name="title" required></label></div>
+  <div class="form-row"><label>Location<input class="input" name="location" placeholder="India / Remote"></label><label>Match %<input class="input" name="match" type="number" min="0" max="100" placeholder="Optional"></label></div>
+  <label>Job URL<input class="input" name="url" type="url"></label>
+  <label>Source<input class="input" name="source" placeholder="Company Careers / LinkedIn / Naukri"></label>
+  <label>Job description<textarea class="input" name="jd" placeholder="Paste JD here for future AI matching"></textarea></label>
+  <button class="btn primary" type="submit">Save job</button></form>`);
+  document.getElementById("jobForm").onsubmit=e=>{e.preventDefault();const p=Object.fromEntries(new FormData(e.target));state.jobs.unshift({id:id(),...p,dateFound:new Date().toISOString()});saveLocal();document.getElementById("modal").close();render()};
+ },
+ applyJob(jobId){
+  const j=state.jobs.find(x=>x.id===jobId);if(!j)return;
+  state.applications.unshift({id:id(),jobId,title:j.title,company:j.company,status:"Preparing",dateApplied:"",resumeId:state.resumes[0]?.id||"",notes:""});
+  saveLocal(); if(j.url)window.open(j.url,"_blank","noopener"); render();
+ },
+ tailorJob(jobId){
+  const j=state.jobs.find(x=>x.id===jobId), r=state.resumes[0];
+  openModal("Resume tailoring — "+esc(j?.company||""),`<div class="notice">V1 creates the review workspace. The AI connector will be added next; no unsupported claims are generated by this screen.</div>
+  <div class="form"><label>Role<input class="input" value="${esc(j?.title||"")}" readonly></label><label>JD<textarea class="input" readonly>${esc(j?.jd||"Paste the JD into the job record first.")}</textarea></label><label>Master resume<textarea class="input" readonly>${esc(r?.text||"Add your master resume first.")}</textarea></label><button class="btn primary" type="button" onclick="document.getElementById('modal').close()">Save review state</button></div>`);
+ },
+ addApplication(){
+  openModal("Add application",`<form class="form" id="appForm"><div class="form-row"><label>Company<input class="input" name="company" required></label><label>Role<input class="input" name="title" required></label></div><label>Status<select class="input" name="status">${["Saved","Preparing","Applied","Recruiter Screen","Interview","Final","Offer","Rejected","Withdrawn"].map(x=>`<option>${x}</option>`).join("")}</select></label><label>Notes<textarea class="input" name="notes"></textarea></label><button class="btn primary">Save application</button></form>`);
+  document.getElementById("appForm").onsubmit=e=>{e.preventDefault();state.applications.unshift({id:id(),...Object.fromEntries(new FormData(e.target))});saveLocal();document.getElementById("modal").close();render()};
+ },
+ editApplication(appId){
+  const a=state.applications.find(x=>x.id===appId);if(!a)return;
+  openModal(a.company+" — "+a.title,`<form class="form" id="editApp"><label>Status<select class="input" name="status">${["Saved","Preparing","Applied","Recruiter Screen","Interview","Final","Offer","Rejected","Withdrawn"].map(x=>`<option ${x===a.status?"selected":""}>${x}</option>`).join("")}</select></label><label>Next action<textarea class="input" name="notes">${esc(a.notes||"")}</textarea></label><button class="btn primary">Update</button></form>`);
+  document.getElementById("editApp").onsubmit=e=>{e.preventDefault();Object.assign(a,Object.fromEntries(new FormData(e.target)));saveLocal();document.getElementById("modal").close();render()};
+ },
+ addContact(){
+  openModal("Add contact",`<form class="form" id="contactForm"><div class="form-row"><label>Name<input class="input" name="name" required></label><label>Company<input class="input" name="company" required></label></div><div class="form-row"><label>Title<input class="input" name="title"></label><label>Relationship<input class="input" name="relationship" placeholder="Recruiter / Hiring Manager / Referral"></label></div><label>LinkedIn URL<input class="input" name="linkedin" type="url"></label><button class="btn primary">Save contact</button></form>`);
+  document.getElementById("contactForm").onsubmit=e=>{e.preventDefault();state.contacts.push({id:id(),...Object.fromEntries(new FormData(e.target))});saveLocal();document.getElementById("modal").close();render()};
+ },
+ draftContact(contactId){
+  const c=state.contacts.find(x=>x.id===contactId);if(!c)return;
+  const msg=`Hi ${c.name.split(" ")[0]}, I’m exploring growth and lifecycle marketing opportunities and came across your work at ${c.company}. I’d love to connect and learn more about your experience there.`;
+  openModal("LinkedIn draft",`<div class="form"><label>Draft<textarea class="input" id="draftText">${msg}</textarea></label><button class="btn primary" type="button" onclick="document.getElementById('draftText').select()">Select text</button></div>`);
+ },
+ editCompany(companyId){
+  const c=state.companies.find(x=>x.id===companyId);if(!c)return;
+  openModal("Company settings",`<form class="form" id="companyForm"><label>Company<input class="input" name="name" value="${esc(c.name)}" required></label><label>ATS<input class="input" name="ats" value="${esc(c.ats||"")}" placeholder="Greenhouse / Lever / Workday / Custom"></label><label>Career / portal URL<input class="input" name="sourceUrl" value="${esc(c.sourceUrl||"")}" type="url"></label><label>Active <input type="checkbox" name="active" ${c.active?"checked":""}></label><button class="btn primary">Save</button></form>`);
+  document.getElementById("companyForm").onsubmit=e=>{e.preventDefault();const f=new FormData(e.target);c.name=f.get("name");c.ats=f.get("ats");c.sourceUrl=f.get("sourceUrl");c.active=f.has("active");c.lastChecked=new Date().toISOString();saveLocal();document.getElementById("modal").close();render()};
+ },
+ editResume(){
+  const r=state.resumes[0]||{id:id(),text:""};
+  openModal("Master resume",`<form class="form" id="resumeForm"><label>Paste your master resume<textarea class="input" name="text" style="min-height:360px" required>${esc(r.text)}</textarea></label><button class="btn primary">Save master resume</button></form>`);
+  document.getElementById("resumeForm").onsubmit=e=>{e.preventDefault();r.text=new FormData(e.target).get("text");r.updatedAt=new Date().toISOString();state.resumes=[r];saveLocal();document.getElementById("modal").close();render()};
+ }
+};
+
+document.getElementById("settingsBtn").onclick=()=>{
+ openModal("CareerOS settings",`<form class="form" id="settingsForm"><div class="notice">Paste your deployed Apps Script Web App /exec URL here. Leave blank to use browser-local data while developing.</div><label>Apps Script backend URL<input class="input" name="backend" value="${esc(state.backend||"")}" placeholder="https://script.google.com/macros/s/.../exec"></label><label>Minimum job-match %<input class="input" name="minMatch" type="number" min="0" max="100" value="${esc(state.settings.minMatch||70)}"></label><button class="btn primary">Save settings</button></form>`);
+ document.getElementById("settingsForm").onsubmit=e=>{e.preventDefault();const f=new FormData(e.target);state.backend=f.get("backend");state.settings.minMatch=f.get("minMatch");saveLocal();document.getElementById("modal").close();render()};
+};
+
+loadLocal();render();
+</script>
+</body>
+</html>
