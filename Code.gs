@@ -1,14 +1,11 @@
 // ═══════════════════════════════════════════════════════════
-// CAREEROS — Google Apps Script Backend V0.2
-// Complete backend for CareerOS
+// CAREEROS — Google Apps Script Backend V0.1
+// Deploy: Deploy > New deployment > Web app
+// Execute as: Me
+// Who has access: Anyone
 //
-// Deploy:
-//   Deploy > Manage deployments > Edit
-//   Execute as: Me
-//   Who has access: Anyone
-//
-// Creates / uses a Google Sheet called "CareerOS"
-// and a Google Drive folder called "CareerOS Resume Library".
+// Creates a private Google Sheet called "CareerOS" in the
+// deploying user's Drive and remembers its ID in Script Properties.
 // ═══════════════════════════════════════════════════════════
 
 const SPREADSHEET_NAME = "CareerOS";
@@ -29,139 +26,18 @@ const SHEETS = {
 };
 
 const HEADERS = {
-  Jobs: [
-    "ID",
-    "Company",
-    "Title",
-    "Location",
-    "URL",
-    "Source",
-    "DateFound",
-    "Match",
-    "Priority",
-    "JD",
-    "Status",
-    "Notes"
-  ],
-
-  Applications: [
-    "ID",
-    "JobID",
-    "Company",
-    "Title",
-    "Status",
-    "DateApplied",
-    "ResumeID",
-    "Recruiter",
-    "NextAction",
-    "FollowUpDate",
-    "Notes"
-  ],
-
-  Companies: [
-    "ID",
-    "Name",
-    "Category",
-    "ATS",
-    "SourceURL",
-    "Active",
-    "LastChecked",
-    "Notes"
-  ],
-
-  Contacts: [
-    "ID",
-    "Name",
-    "Company",
-    "Title",
-    "Relationship",
-    "LinkedIn",
-    "Email",
-    "LastContact",
-    "NextAction",
-    "Notes"
-  ],
-
-  Resumes: [
-    "ID",
-    "Name",
-    "Text",
-    "Version",
-    "TargetRole",
-    "TargetCompany",
-    "CreatedAt",
-    "UpdatedAt"
-  ],
-
-  Interviews: [
-    "ID",
-    "ApplicationID",
-    "Company",
-    "Title",
-    "Round",
-    "Date",
-    "Time",
-    "Location",
-    "Notes"
-  ],
-
-  FollowUps: [
-    "ID",
-    "ApplicationID",
-    "Company",
-    "Title",
-    "DueDate",
-    "Type",
-    "Status",
-    "Notes"
-  ],
-
-  EmailEvents: [
-    "ID",
-    "MessageID",
-    "Date",
-    "Sender",
-    "Subject",
-    "EventType",
-    "Company",
-    "Title",
-    "ApplicationID",
-    "Confidence",
-    "RawSnippet"
-  ],
-
-  Portals: [
-    "ID",
-    "Name",
-    "URL",
-    "Notes",
-    "Active"
-  ],
-
-  Settings: [
-    "Key",
-    "Value"
-  ],
-
-  Meta: [
-    "Key",
-    "Value"
-  ],
-
-  ResumeLibrary: [
-    "ID",
-    "Name",
-    "Type",
-    "FileId",
-    "FileURL",
-    "MimeType",
-    "Size",
-    "TargetRole",
-    "TargetCompany",
-    "CreatedAt",
-    "UpdatedAt",
-    "Notes"
-  ]
+  Jobs: ["ID","Company","Title","Location","URL","Source","DateFound","Match","Priority","JD","Status","Notes"],
+  Applications: ["ID","JobID","Company","Title","Status","DateApplied","ResumeID","Recruiter","NextAction","FollowUpDate","Notes"],
+  Companies: ["ID","Name","Category","ATS","SourceURL","Active","LastChecked","Notes"],
+  Contacts: ["ID","Name","Company","Title","Relationship","LinkedIn","Email","LastContact","NextAction","Notes"],
+  Resumes: ["ID","Name","Text","Version","TargetRole","TargetCompany","CreatedAt","UpdatedAt"],
+  Interviews: ["ID","ApplicationID","Company","Title","Round","Date","Time","Location","Notes"],
+  FollowUps: ["ID","ApplicationID","Company","Title","DueDate","Type","Status","Notes"],
+  EmailEvents: ["ID","MessageID","Date","Sender","Subject","EventType","Company","Title","ApplicationID","Confidence","RawSnippet"],
+  Portals: ["ID","Name","URL","Notes","Active"],
+  Settings: ["Key","Value"],
+  Meta: ["Key","Value"],
+  ResumeLibrary: ["ID","Name","Type","FileId","FileURL","MimeType","Size","TargetRole","TargetCompany","CreatedAt","UpdatedAt","Notes"]
 };
 
 
@@ -179,13 +55,15 @@ function doPost(e) {
 
 
 // ═══════════════════════════════════════════════════════════
-// REQUEST ROUTER
+// REQUEST HANDLER
 // ═══════════════════════════════════════════════════════════
 
 function handleRequest_(e) {
+
   const action = (e.parameter && e.parameter.action) || "";
 
   try {
+
     let result;
 
     if (action === "bootstrap") {
@@ -226,6 +104,7 @@ function handleRequest_(e) {
       error: err.message,
       stack: err.stack
     });
+
   }
 }
 
@@ -235,36 +114,55 @@ function handleRequest_(e) {
 // ═══════════════════════════════════════════════════════════
 
 function json_(obj) {
+
   return ContentService
-    .createTextOutput(JSON.stringify(obj))
-    .setMimeType(ContentService.MimeType.JSON);
+    .createTextOutput(
+      JSON.stringify(obj)
+    )
+    .setMimeType(
+      ContentService.MimeType.JSON
+    );
+
 }
 
 
 // ═══════════════════════════════════════════════════════════
-// GOOGLE SHEETS
+// GOOGLE SHEET
 // ═══════════════════════════════════════════════════════════
 
 function getSpreadsheet_() {
 
-  const props = PropertiesService.getScriptProperties();
+  const props =
+    PropertiesService.getScriptProperties();
 
-  const existingId = props.getProperty("SPREADSHEET_ID");
+  const existingId =
+    props.getProperty("SPREADSHEET_ID");
 
   if (existingId) {
 
     try {
-      return SpreadsheetApp.openById(existingId);
+
+      return SpreadsheetApp.openById(
+        existingId
+      );
 
     } catch (err) {
-      // Spreadsheet was deleted or inaccessible.
-      // Recreate it below.
+
+      // Recreate if deleted or inaccessible.
+
     }
+
   }
 
-  const ss = SpreadsheetApp.create(SPREADSHEET_NAME);
+  const ss =
+    SpreadsheetApp.create(
+      SPREADSHEET_NAME
+    );
 
-  props.setProperty("SPREADSHEET_ID", ss.getId());
+  props.setProperty(
+    "SPREADSHEET_ID",
+    ss.getId()
+  );
 
   return ss;
 }
@@ -272,32 +170,48 @@ function getSpreadsheet_() {
 
 function getSheet_(name) {
 
-  const ss = getSpreadsheet_();
+  const ss =
+    getSpreadsheet_();
 
-  let sheet = ss.getSheetByName(name);
+  let sheet =
+    ss.getSheetByName(name);
 
   if (!sheet) {
 
-    sheet = ss.insertSheet(name);
+    sheet =
+      ss.insertSheet(name);
 
     if (HEADERS[name]) {
 
       sheet
-        .getRange(1, 1, 1, HEADERS[name].length)
-        .setValues([HEADERS[name]]);
+        .getRange(
+          1,
+          1,
+          1,
+          HEADERS[name].length
+        )
+        .setValues([
+          HEADERS[name]
+        ]);
 
       sheet.setFrozenRows(1);
+
     }
+
   }
 
-  // Remove default Sheet1 once proper sheets exist.
-  const defaultSheet = ss.getSheetByName("Sheet1");
+  const defaultSheet =
+    ss.getSheetByName("Sheet1");
 
   if (
     defaultSheet &&
     ss.getSheets().length > 1
   ) {
-    ss.deleteSheet(defaultSheet);
+
+    ss.deleteSheet(
+      defaultSheet
+    );
+
   }
 
   return sheet;
@@ -310,35 +224,50 @@ function getSheet_(name) {
 
 function bootstrap_() {
 
-  Object.keys(SHEETS).forEach(function(key) {
-    getSheet_(SHEETS[key]);
-  });
+  Object.keys(SHEETS)
+    .forEach(function(key) {
+
+      getSheet_(
+        SHEETS[key]
+      );
+
+    });
 
   return {
+
     ok: true,
-    spreadsheetId: getSpreadsheet_().getId(),
-    sheets: Object.values(SHEETS)
+
+    spreadsheetId:
+      getSpreadsheet_().getId(),
+
+    sheets:
+      Object.values(SHEETS)
+
   };
+
 }
 
 
 // ═══════════════════════════════════════════════════════════
-// READ SHEET ROWS
+// READ SHEETS
 // ═══════════════════════════════════════════════════════════
 
 function rowsToObjects_(sheetName) {
 
-  const sheet = getSheet_(sheetName);
+  const sheet =
+    getSheet_(sheetName);
 
-  const data = sheet
-    .getDataRange()
-    .getValues();
+  const data =
+    sheet
+      .getDataRange()
+      .getValues();
 
   if (data.length <= 1) {
     return [];
   }
 
-  const headers = data[0].map(String);
+  const headers =
+    data[0].map(String);
 
   return data
     .slice(1)
@@ -346,71 +275,102 @@ function rowsToObjects_(sheetName) {
 
       const obj = {};
 
-      headers.forEach(function(header, index) {
-        obj[header] = row[index];
-      });
+      headers.forEach(
+        function(header, index) {
+
+          obj[header] =
+            row[index];
+
+        }
+      );
 
       return obj;
+
     })
     .filter(function(obj) {
+
       return obj.ID || obj.Key;
+
     });
+
 }
 
 
 // ═══════════════════════════════════════════════════════════
-// FETCH EVERYTHING
+// FETCH ALL
 // ═══════════════════════════════════════════════════════════
 
 function fetchAll_() {
 
   const result = {};
 
-  Object.values(SHEETS).forEach(function(name) {
-    result[name] = rowsToObjects_(name);
-  });
+  Object.values(SHEETS)
+    .forEach(function(name) {
+
+      result[name] =
+        rowsToObjects_(name);
+
+    });
 
   return result;
 }
 
 
 // ═══════════════════════════════════════════════════════════
-// GENERIC SAVE
+// SAVE RECORD
 // ═══════════════════════════════════════════════════════════
 
 function saveRecord_(p) {
 
-  const sheetName = p.sheet;
+  const sheetName =
+    p.sheet;
 
   if (!HEADERS[sheetName]) {
-    throw new Error("Invalid sheet: " + sheetName);
+
+    throw new Error(
+      "Invalid sheet: " +
+      sheetName
+    );
+
   }
 
-  const sheet = getSheet_(sheetName);
+  const sheet =
+    getSheet_(sheetName);
 
-  const headers = HEADERS[sheetName];
+  const headers =
+    HEADERS[sheetName];
 
-  const id = p.id || Utilities.getUuid();
+  const id =
+    p.id ||
+    Utilities.getUuid();
 
-  const row = headers.map(function(header) {
+  const row =
+    headers.map(function(header) {
 
-    if (header === "ID") {
-      return id;
-    }
+      if (header === "ID") {
+        return id;
+      }
 
-    return p[header] !== undefined
-      ? p[header]
-      : "";
-  });
+      return p[header] !== undefined
+        ? p[header]
+        : "";
 
-  const data = sheet
-    .getDataRange()
-    .getValues();
+    });
 
-  for (let i = 1; i < data.length; i++) {
+  const data =
+    sheet
+      .getDataRange()
+      .getValues();
+
+  for (
+    let i = 1;
+    i < data.length;
+    i++
+  ) {
 
     if (
-      String(data[i][0]) === String(id)
+      String(data[i][0]) ===
+      String(id)
     ) {
 
       sheet
@@ -420,64 +380,100 @@ function saveRecord_(p) {
           1,
           row.length
         )
-        .setValues([row]);
+        .setValues([
+          row
+        ]);
 
       return {
+
         ok: true,
+
         id: id,
+
         updated: true
+
       };
+
     }
+
   }
 
   sheet.appendRow(row);
 
   return {
+
     ok: true,
+
     id: id,
+
     created: true
+
   };
+
 }
 
 
 // ═══════════════════════════════════════════════════════════
-// GENERIC DELETE
+// DELETE RECORD
 // ═══════════════════════════════════════════════════════════
 
 function deleteRecord_(p) {
 
-  const sheetName = p.sheet;
+  const sheetName =
+    p.sheet;
 
-  const id = p.id;
+  const id =
+    p.id;
 
   if (!HEADERS[sheetName]) {
-    throw new Error("Invalid sheet: " + sheetName);
+
+    throw new Error(
+      "Invalid sheet: " +
+      sheetName
+    );
+
   }
 
-  const sheet = getSheet_(sheetName);
+  const sheet =
+    getSheet_(sheetName);
 
-  const data = sheet
-    .getDataRange()
-    .getValues();
+  const data =
+    sheet
+      .getDataRange()
+      .getValues();
 
-  for (let i = 1; i < data.length; i++) {
+  for (
+    let i = 1;
+    i < data.length;
+    i++
+  ) {
 
     if (
-      String(data[i][0]) === String(id)
+      String(data[i][0]) ===
+      String(id)
     ) {
 
-      sheet.deleteRow(i + 1);
+      sheet.deleteRow(
+        i + 1
+      );
 
       return {
         ok: true
       };
+
     }
+
   }
 
   return {
+
     ok: false,
-    error: "Record not found"
+
+    error:
+      "Record not found"
+
   };
+
 }
 
 
@@ -487,30 +483,46 @@ function deleteRecord_(p) {
 
 function saveSetting_(p) {
 
-  const sheet = getSheet_(SHEETS.SETTINGS);
+  const sheet =
+    getSheet_(
+      SHEETS.SETTINGS
+    );
 
-  const data = sheet
-    .getDataRange()
-    .getValues();
+  const data =
+    sheet
+      .getDataRange()
+      .getValues();
 
-  const key = p.key || "";
+  const key =
+    p.key || "";
 
-  const value = p.value || "";
+  const value =
+    p.value || "";
 
-  for (let i = 1; i < data.length; i++) {
+  for (
+    let i = 1;
+    i < data.length;
+    i++
+  ) {
 
     if (
-      String(data[i][0]) === key
+      String(data[i][0]) ===
+      key
     ) {
 
       sheet
-        .getRange(i + 1, 2)
+        .getRange(
+          i + 1,
+          2
+        )
         .setValue(value);
 
       return {
         ok: true
       };
+
     }
+
   }
 
   sheet.appendRow([
@@ -521,6 +533,7 @@ function saveSetting_(p) {
   return {
     ok: true
   };
+
 }
 
 
@@ -528,19 +541,30 @@ function saveSetting_(p) {
 // RESUME & DOCUMENT LIBRARY
 // ═══════════════════════════════════════════════════════════
 
+const RESUME_LIBRARY_FOLDER_NAME =
+  "CareerOS Resume Library";
+
+const MAX_RESUME_FILE_BYTES =
+  5 * 1024 * 1024;
+
+
 function getResumeLibraryFolder_() {
 
-  const folderName =
-    "CareerOS Resume Library";
-
   const folders =
-    DriveApp.getFoldersByName(folderName);
+    DriveApp.getFoldersByName(
+      RESUME_LIBRARY_FOLDER_NAME
+    );
 
   if (folders.hasNext()) {
+
     return folders.next();
+
   }
 
-  return DriveApp.createFolder(folderName);
+  return DriveApp.createFolder(
+    RESUME_LIBRARY_FOLDER_NAME
+  );
+
 }
 
 
@@ -551,7 +575,9 @@ function getResumeLibraryFolder_() {
 function uploadResumeFile_(p) {
 
   const name =
-    String(p.name || "CareerOS Document");
+    String(
+      p.name || ""
+    ).trim();
 
   const mimeType =
     String(
@@ -560,67 +586,101 @@ function uploadResumeFile_(p) {
     );
 
   const base64 =
-    String(p.base64 || "");
+    String(
+      p.base64 || ""
+    ).trim();
 
   const type =
-    String(p.type || "Resume");
+    String(
+      p.type ||
+      "Resume"
+    ).trim();
 
   const targetRole =
-    String(p.targetRole || "");
+    String(
+      p.targetRole ||
+      ""
+    ).trim();
 
   const targetCompany =
-    String(p.targetCompany || "");
+    String(
+      p.targetCompany ||
+      ""
+    ).trim();
 
   const notes =
-    String(p.notes || "");
+    String(
+      p.notes ||
+      ""
+    ).trim();
+
+
+  if (!name) {
+
+    throw new Error(
+      "Please select a file."
+    );
+
+  }
 
   if (!base64) {
-    throw new Error("No file data received.");
-  }
-
-
-  // Maximum decoded file size:
-  // 5 MB
-  const MAX_BYTES =
-    5 * 1024 * 1024;
-
-  const estimatedBytes =
-    Math.floor(
-      base64.length * 3 / 4
-    );
-
-  if (estimatedBytes > MAX_BYTES) {
 
     throw new Error(
-      "File is too large. Maximum size is 5 MB."
+      "File data was not received."
     );
+
   }
 
 
-  // Decode Base64.
+  const ext =
+    name
+      .toLowerCase()
+      .split(".")
+      .pop();
+
+  const allowedExtensions = [
+    "pdf",
+    "doc",
+    "docx",
+    "txt"
+  ];
+
+
+  if (
+    allowedExtensions.indexOf(
+      ext
+    ) === -1
+  ) {
+
+    throw new Error(
+      "Only PDF, DOC, DOCX and TXT files are supported."
+    );
+
+  }
+
+
   const bytes =
-    Utilities.base64Decode(base64);
+    Utilities.base64Decode(
+      base64
+    );
 
 
-  // Supported extensions.
-  const lowerName =
-    name.toLowerCase();
-
-  const allowed =
-    lowerName.endsWith(".pdf") ||
-    lowerName.endsWith(".doc") ||
-    lowerName.endsWith(".docx") ||
-    lowerName.endsWith(".txt");
-
-  if (!allowed) {
+  if (
+    bytes.length >
+    MAX_RESUME_FILE_BYTES
+  ) {
 
     throw new Error(
-      "Unsupported file type. Please upload PDF, DOC, DOCX or TXT."
+      "File is larger than 5 MB. Please upload a smaller file."
     );
+
   }
 
 
-  // Create Drive blob.
+  const folder =
+    getResumeLibraryFolder_();
+
+
   const blob =
     Utilities.newBlob(
       bytes,
@@ -629,64 +689,66 @@ function uploadResumeFile_(p) {
     );
 
 
-  // Get CareerOS folder.
-  const folder =
-    getResumeLibraryFolder_();
-
-
-  // Create file.
   const file =
-    folder.createFile(blob);
+    folder.createFile(
+      blob
+    );
 
 
-  // Give file a sensible name.
-  file.setName(name);
+  file.setDescription(
+    "CareerOS Resume & Document Library"
+  );
 
 
   const now =
-    new Date();
+    new Date().toISOString();
 
-  const id =
+
+  const recordId =
     Utilities.getUuid();
 
 
-  // Build record.
   const record = {
 
-    ID: id,
+    ID: recordId,
 
     Name: name,
 
     Type: type,
 
-    FileId: file.getId(),
+    FileId:
+      file.getId(),
 
-    FileURL: file.getUrl(),
+    FileURL:
+      file.getUrl(),
 
-    MimeType: mimeType,
+    MimeType:
+      mimeType,
 
-    Size: bytes.length,
+    Size:
+      bytes.length,
 
-    TargetRole: targetRole,
+    TargetRole:
+      targetRole,
 
-    TargetCompany: targetCompany,
+    TargetCompany:
+      targetCompany,
 
-    CreatedAt: now,
+    CreatedAt:
+      now,
 
-    UpdatedAt: now,
+    UpdatedAt:
+      now,
 
-    Notes: notes
+    Notes:
+      notes
+
   };
 
 
-  // Save metadata in Sheet.
-  const sheet =
-    getSheet_(
-      SHEETS.RESUME_LIBRARY
-    );
-
-
-  sheet.appendRow([
+  getSheet_(
+    SHEETS.RESUME_LIBRARY
+  ).appendRow([
 
     record.ID,
 
@@ -719,11 +781,14 @@ function uploadResumeFile_(p) {
 
     ok: true,
 
-    id: id,
+    id:
+      recordId,
 
-    record: record
+    record:
+      record
 
   };
+
 }
 
 
@@ -734,13 +799,17 @@ function uploadResumeFile_(p) {
 function deleteResumeFile_(p) {
 
   const id =
-    String(p.id || "");
+    String(
+      p.id || ""
+    ).trim();
+
 
   if (!id) {
 
     throw new Error(
-      "Missing resume/document ID."
+      "Document ID is required."
     );
+
   }
 
 
@@ -756,42 +825,53 @@ function deleteResumeFile_(p) {
       .getValues();
 
 
-  for (let i = 1; i < data.length; i++) {
+  for (
+    let i = 1;
+    i < data.length;
+    i++
+  ) {
 
     if (
-      String(data[i][0]) === id
+      String(data[i][0]) ===
+      id
     ) {
 
       const fileId =
-        String(data[i][3] || "");
+        String(
+          data[i][3] || ""
+        );
 
 
-      // Move Drive file to trash.
       if (fileId) {
 
         try {
 
-          const file =
-            DriveApp.getFileById(fileId);
-
-          file.setTrashed(true);
+          DriveApp
+            .getFileById(
+              fileId
+            )
+            .setTrashed(true);
 
         } catch (err) {
 
-          // Continue deleting metadata
-          // even if Drive file is missing.
+          // File may already be missing/deleted.
+
         }
+
       }
 
 
-      // Delete Sheet row.
-      sheet.deleteRow(i + 1);
+      sheet.deleteRow(
+        i + 1
+      );
 
 
       return {
         ok: true
       };
+
     }
+
   }
 
 
@@ -800,67 +880,70 @@ function deleteResumeFile_(p) {
     ok: false,
 
     error:
-      "Resume/document not found."
+      "Document not found."
+
   };
+
 }
 
 
 // ═══════════════════════════════════════════════════════════
-// SEED TARGET COMPANIES
+// SEED COMPANIES
 // ═══════════════════════════════════════════════════════════
 
 function seedCompanies_() {
 
   const companies = [
 
-    ["HSBC", "Global Bank"],
-    ["DBS", "Global Bank"],
-    ["American Express", "Global Bank"],
-    ["Bank of America", "Global Bank"],
-    ["Citi", "Global Bank"],
-    ["Standard Chartered", "Global Bank"],
-    ["Deutsche Bank", "Global Bank"],
-    ["Barclays", "Global Bank"],
-    ["Goldman Sachs", "Global Bank"],
-    ["JPMorgan", "Global Bank"],
+    ["HSBC","Global Bank"],
+    ["DBS","Global Bank"],
+    ["American Express","Global Bank"],
+    ["Bank of America","Global Bank"],
+    ["Citi","Global Bank"],
+    ["Standard Chartered","Global Bank"],
+    ["Deutsche Bank","Global Bank"],
+    ["Barclays","Global Bank"],
+    ["Goldman Sachs","Global Bank"],
+    ["JPMorgan","Global Bank"],
 
-    ["Razorpay", "Indian Fintech"],
-    ["PayU", "Indian Fintech"],
-    ["Cashfree Payments", "Indian Fintech"],
-    ["Pine Labs", "Indian Fintech"],
-    ["Juspay", "Indian Fintech"],
-    ["Poonawalla Fincorp", "Indian Fintech"],
-    ["Jio Finance", "Indian Fintech"],
-    ["Kiwi Credit Card", "Indian Fintech"],
-    ["Kiwi Insurance", "Indian Fintech"],
-    ["Fibe", "Indian Fintech"],
-    ["Scapia", "Indian Fintech"],
-    ["CRED", "Indian Fintech"],
-    ["Groww", "Indian Fintech"],
-    ["PhonePe", "Indian Fintech"],
-    ["Jupiter", "Indian Fintech"],
-    ["Navi", "Indian Fintech"],
-    ["Slice", "Indian Fintech"],
-    ["Fi Money", "Indian Fintech"],
-    ["OneCard", "Indian Fintech"],
+    ["Razorpay","Indian Fintech"],
+    ["PayU","Indian Fintech"],
+    ["Cashfree Payments","Indian Fintech"],
+    ["Pine Labs","Indian Fintech"],
+    ["Juspay","Indian Fintech"],
+    ["Poonawalla Fincorp","Indian Fintech"],
+    ["Jio Finance","Indian Fintech"],
+    ["Kiwi Credit Card","Indian Fintech"],
+    ["Kiwi Insurance","Indian Fintech"],
+    ["Fibe","Indian Fintech"],
+    ["Scapia","Indian Fintech"],
+    ["CRED","Indian Fintech"],
+    ["Groww","Indian Fintech"],
+    ["PhonePe","Indian Fintech"],
+    ["Jupiter","Indian Fintech"],
+    ["Navi","Indian Fintech"],
+    ["Slice","Indian Fintech"],
+    ["Fi Money","Indian Fintech"],
+    ["OneCard","Indian Fintech"],
 
-    ["Stripe", "Global Fintech"],
-    ["Airwallex", "Global Fintech"],
+    ["Stripe","Global Fintech"],
+    ["Airwallex","Global Fintech"],
 
-    ["Mastercard", "Payments"],
-    ["NPCI", "Payments"],
-    ["Visa", "Payments"],
+    ["Mastercard","Payments"],
+    ["NPCI","Payments"],
+    ["Visa","Payments"],
 
-    ["BlackRock", "Finance/Data"],
-    ["Motilal Oswal", "Finance/Data"],
-    ["CRISIL", "Finance/Data"],
-    ["ABFC", "Finance/Data"],
+    ["BlackRock","Finance/Data"],
+    ["Motilal Oswal","Finance/Data"],
+    ["CRISIL","Finance/Data"],
+    ["ABFC","Finance/Data"],
 
-    ["Google", "Big Tech"],
-    ["Adobe", "Big Tech"],
-    ["Amazon", "Big Tech"],
-    ["Flipkart", "Big Tech"],
-    ["Meesho", "Big Tech"]
+    ["Google","Big Tech"],
+    ["Adobe","Big Tech"],
+    ["Amazon","Big Tech"],
+    ["Flipkart","Big Tech"],
+    ["Meesho","Big Tech"]
+
   ];
 
 
@@ -879,68 +962,84 @@ function seedCompanies_() {
   const names = {};
 
 
-  existing.forEach(function(x) {
+  existing.forEach(
+    function(company) {
 
-    names[
-      String(x.Name)
-        .toLowerCase()
-    ] = true;
+      names[
+        String(
+          company.Name
+        ).toLowerCase()
+      ] = true;
 
-  });
+    }
+  );
 
 
   let added = 0;
 
 
-  companies.forEach(function(c) {
+  companies.forEach(
+    function(company) {
 
-    const companyName =
-      c[0].toLowerCase();
+      const name =
+        company[0];
+
+      const category =
+        company[1];
 
 
-    if (!names[companyName]) {
+      if (
+        !names[
+          name.toLowerCase()
+        ]
+      ) {
 
-      sheet.appendRow([
+        sheet.appendRow([
 
-        Utilities.getUuid(),
+          Utilities.getUuid(),
 
-        c[0],
+          name,
 
-        c[1],
+          category,
 
-        "",
+          "",
 
-        "",
+          "",
 
-        true,
+          true,
 
-        "",
+          "",
 
-        ""
+          ""
 
-      ]);
+        ]);
 
-      added++;
+        added++;
+
+      }
+
     }
-
-  });
+  );
 
 
   return {
 
     ok: true,
 
-    added: added,
+    added:
+      added,
 
     total:
-      existing.length + added
+      existing.length +
+      added
 
   };
+
 }
 
 
 // ═══════════════════════════════════════════════════════════
-// PUBLIC BOOTSTRAP WRAPPER
+// MANUAL BOOTSTRAP WRAPPER
 // ═══════════════════════════════════════════════════════════
 
 function bootstrap() {
